@@ -1,0 +1,32 @@
+# Local secrets and runtime config
+.env
+cookie.json
+*.cookie
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Downloaded Zhihu content
+知乎_*_文章合集*/
+download_manifest.json
+*_文章图片/
+
+# Local logs and temporary files
+*.log
+*.tmp
+*.bak
+*.swp
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
