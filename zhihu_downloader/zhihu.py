@@ -2,7 +2,6 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Tuple
-from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -24,41 +23,7 @@ CONTENT_TYPE_LABELS = {
     "articles": "文章",
     "answers": "回答",
     "pins": "想法",
-    "upvoted_answers": "赞同过的回答",
-    "upvoted_articles": "赞同过的文章",
 }
-ACTIVITY_INCLUDE = ";".join(
-    [
-        ",".join(
-            [
-                "data[?(target.type=answer)].target.is_normal",
-                "suggest_edit",
-                "content",
-                "voteup_count",
-                "comment_count",
-                "created_time",
-                "updated_time",
-                "question",
-                "excerpt",
-            ]
-        ),
-        ",".join(
-            [
-                "data[?(target.type=article)].target.title",
-                "content",
-                "voteup_count",
-                "comment_count",
-                "created",
-                "updated",
-                "excerpt",
-                "column",
-                "url",
-            ]
-        ),
-    ]
-)
-UPVOTED_ANSWER_VERBS = {"ANSWER_VOTE_UP", "MEMBER_VOTEUP_ANSWER", "member_voteup_answer"}
-UPVOTED_ARTICLE_VERBS = {"MEMBER_VOTEUP_ARTICLE", "member_voteup_article", "UPVOTE_POST"}
 
 
 @dataclass
@@ -85,7 +50,7 @@ def item_metadata_markdown(item: dict, title: str, url: str, created: int, item_
     created_text = format_timestamp(created)
     if created_text:
         lines.append(f"- 创建时间: {created_text}")
-    if item_type in {"answers", "upvoted_answers"}:
+    if item_type == "answers":
         question = item.get("question") if isinstance(item.get("question"), dict) else {}
         voteup_count = item.get("voteup_count")
         comment_count = item.get("comment_count")
@@ -95,17 +60,6 @@ def item_metadata_markdown(item: dict, title: str, url: str, created: int, item_
             lines.append(f"- 问题: {question_title}")
         if question_url:
             lines.append(f"- 问题链接: {question_url}")
-        if voteup_count is not None:
-            lines.append(f"- 赞同数: {voteup_count}")
-        if comment_count is not None:
-            lines.append(f"- 评论数: {comment_count}")
-    if item_type == "upvoted_articles":
-        voteup_count = item.get("voteup_count")
-        comment_count = item.get("comment_count")
-        column = item.get("column") if isinstance(item.get("column"), dict) else {}
-        column_title = str(column.get("title") or column.get("name") or "").strip()
-        if column_title:
-            lines.append(f"- 专栏: {column_title}")
         if voteup_count is not None:
             lines.append(f"- 赞同数: {voteup_count}")
         if comment_count is not None:
@@ -154,18 +108,6 @@ def extract_pin_images(item: dict) -> List[str]:
                 if isinstance(url, str):
                     image_urls.append(url)
     return image_urls
-
-
-def get_next_activity_params(next_url: str) -> Optional[dict]:
-    if not next_url:
-        return None
-    query = parse_qs(urlparse(next_url).query)
-    params = {}
-    for key in ("limit", "after_id", "before_id"):
-        value = query.get(key)
-        if value:
-            params[key] = value[0]
-    return params or None
 
 
 def get_author_all_articles(
@@ -347,113 +289,6 @@ def get_author_pins(
     return pin_list
 
 
-def activity_target_to_answer(target: dict, activity_created: int) -> Optional[ZhihuItem]:
-    answer_id = str(target.get("id") or "")
-    question = target.get("question") if isinstance(target.get("question"), dict) else {}
-    question_title = clean_file_name(str(question.get("title") or answer_id))
-    title = clean_file_name(f"赞同回答_{question_title}")
-    question_id = str(question.get("id") or "")
-    url = str(target.get("url") or "")
-    if not url and question_id and answer_id:
-        url = f"https://www.zhihu.com/question/{question_id}/answer/{answer_id}"
-    if not answer_id or not url:
-        return None
-
-    content = target.get("content")
-    body = html_to_markdown(content) if isinstance(content, str) and content.strip() else str(target.get("excerpt") or "")
-    markdown = item_metadata_markdown(target, title, url, activity_created, "upvoted_answers")
-    markdown += f"- 赞同时间: {format_timestamp(activity_created)}\n"
-    if body:
-        markdown += "\n## 回答正文\n\n" + body
-    return ZhihuItem(answer_id, title, url, activity_created, "upvoted_answers", markdown)
-
-
-def activity_target_to_article(target: dict, activity_created: int) -> Optional[ZhihuItem]:
-    article_id = str(target.get("id") or "")
-    title = clean_file_name(f"赞同文章_{str(target.get('title') or article_id)}")
-    url = str(target.get("url") or "")
-    if not url and article_id:
-        url = f"https://zhuanlan.zhihu.com/p/{article_id}"
-    if not article_id or not url:
-        return None
-
-    content = target.get("content")
-    body = html_to_markdown(content) if isinstance(content, str) and content.strip() else str(target.get("excerpt") or "")
-    markdown = item_metadata_markdown(target, title, url, activity_created, "upvoted_articles")
-    markdown += f"- 赞同时间: {format_timestamp(activity_created)}\n"
-    if body:
-        markdown += "\n## 文章正文\n\n" + body
-    return ZhihuItem(article_id, title, url, activity_created, "upvoted_articles", markdown)
-
-
-def get_author_upvoted_items(
-    session: requests.Session,
-    user_id: str,
-    content_type: str,
-    timeout: int,
-    retries: int,
-    limit: int,
-    delay_range: Tuple[float, float],
-    count: Optional[int] = None,
-    start_timestamp: Optional[int] = None,
-    end_timestamp: Optional[int] = None,
-) -> List[ZhihuItem]:
-    result: List[ZhihuItem] = []
-    base_api = f"https://www.zhihu.com/api/v4/members/{user_id}/activities"
-    verbs = UPVOTED_ANSWER_VERBS if content_type == "upvoted_answers" else UPVOTED_ARTICLE_VERBS
-    target_type = "answer" if content_type == "upvoted_answers" else "article"
-    label = CONTENT_TYPE_LABELS[content_type]
-    params = {"limit": limit, "include": ACTIVITY_INCLUDE}
-    seen_ids = set()
-    print(f"正在从用户动态中获取{label}...")
-
-    while True:
-        response = get_with_retries(session, base_api, timeout=timeout, retries=retries, params=params)
-        data = response.json()
-        activities = data.get("data") or []
-        if not activities:
-            break
-
-        for activity in activities:
-            if not isinstance(activity, dict):
-                continue
-            activity_created = int(activity.get("created_time") or activity.get("created") or 0)
-            if start_timestamp is not None and activity_created and activity_created < start_timestamp:
-                return result
-            if end_timestamp is not None and activity_created and activity_created > end_timestamp:
-                continue
-
-            target = activity.get("target") if isinstance(activity.get("target"), dict) else {}
-            verb = str(activity.get("verb") or "")
-            if verb not in verbs or target.get("type") != target_type:
-                continue
-
-            item = (
-                activity_target_to_answer(target, activity_created)
-                if content_type == "upvoted_answers"
-                else activity_target_to_article(target, activity_created)
-            )
-            if not item or item.item_id in seen_ids:
-                continue
-            seen_ids.add(item.item_id)
-            result.append(item)
-            if count is not None and len(result) >= count:
-                return result
-
-        print(f"已加载 {len(result)} 条{label}，继续加载下一页动态...")
-        paging = data.get("paging") if isinstance(data.get("paging"), dict) else {}
-        if paging.get("is_end"):
-            break
-        next_params = get_next_activity_params(str(paging.get("next") or ""))
-        if not next_params:
-            break
-        next_params["include"] = ACTIVITY_INCLUDE
-        params = next_params
-        random_sleep(delay_range)
-
-    return result
-
-
 def get_author_items(
     session: requests.Session,
     user_id: str,
@@ -477,10 +312,6 @@ def get_author_items(
     if content_type == "pins":
         return get_author_pins(
             session, user_id, timeout, retries, limit, delay_range, count, start_timestamp, end_timestamp
-        )
-    if content_type in {"upvoted_answers", "upvoted_articles"}:
-        return get_author_upvoted_items(
-            session, user_id, content_type, timeout, retries, limit, delay_range, count, start_timestamp, end_timestamp
         )
     raise ValueError(f"不支持的下载类型: {content_type}")
 

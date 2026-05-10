@@ -1,14 +1,12 @@
 # 知乎内容下载器
 
-一个基于知乎 Web API 的本地下载工具，可以把指定用户主页下的文章、回答、想法，以及用户赞同过的回答/文章保存为 Markdown，并可将正文图片下载到本地。
+一个基于知乎 Web API 的本地下载工具，可以把指定用户主页下的文章、回答、想法保存为 Markdown，并可将正文图片下载到本地。
 
 ## 功能
 
 - 下载用户发布的文章：`articles`
 - 下载用户发布的回答：`answers`
 - 下载用户发布的想法：`pins`
-- 下载用户赞同过的回答：`upvoted_answers`
-- 下载用户赞同过的文章：`upvoted_articles`
 - 支持按数量抓取，例如最新 5 条
 - 支持按日期区间抓取，例如 `20260101` 至 `20260201`
 - 支持 Cookie JSON、`.env`、命令行参数
@@ -85,8 +83,6 @@ cookie.browser-export.example.json
 python .\zhihu_down.py --type articles --count 5
 python .\zhihu_down.py --type answers --count 5
 python .\zhihu_down.py --type pins --count 5
-python .\zhihu_down.py --type upvoted_answers --count 5
-python .\zhihu_down.py --type upvoted_articles --count 5
 ```
 
 类型说明：
@@ -96,8 +92,6 @@ python .\zhihu_down.py --type upvoted_articles --count 5
 | `articles` | 用户发布的文章 |
 | `answers` | 用户发布的回答 |
 | `pins` | 用户发布的想法 |
-| `upvoted_answers` | 用户赞同过的回答 |
-| `upvoted_articles` | 用户赞同过的文章 |
 
 默认类型是 `articles`。
 
@@ -121,10 +115,10 @@ python .\zhihu_down.py --user-id yuanmu96 --type answers --count 10
 python .\zhihu_down.py --user-id yuanmu96 --type pins --count 3
 ```
 
-抓取 2026-01-01 至 2026-02-01 期间赞同过的文章：
+抓取 2026-01-01 至 2026-02-01 期间的文章：
 
 ```powershell
-python .\zhihu_down.py --user-id yuanmu96 --type upvoted_articles --start-date 20260101 --end-date 20260201
+python .\zhihu_down.py --user-id yuanmu96 --type articles --start-date 20260101 --end-date 20260201
 ```
 
 只保存 Markdown，不下载图片：
@@ -207,7 +201,7 @@ python .\zhihu_down.py --help
 | --- | --- |
 | `--homepage` | 知乎主页 URL，程序会解析 `/people/` 后的 user_id |
 | `--user-id` | 直接指定知乎 user_id |
-| `--type` | 下载类型 |
+| `--type` | 下载类型：`articles`、`answers`、`pins` |
 | `--count` | 只抓取最新 N 条 |
 | `--date` | 兼容参数，等价于 `--start-date` |
 | `--start-date` | 只抓取该日期及之后，格式 `YYYYMMDD` |

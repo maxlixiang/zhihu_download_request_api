@@ -194,8 +194,8 @@ def build_config(args) -> AppConfig:
 
     author_name = first_value(args.author_name, env.get("ZHIHU_AUTHOR_NAME"), json_config.get("author_name")) or DEFAULT_AUTHOR_NAME
     content_type = first_value(args.type, env.get("ZHIHU_TYPE"), json_config.get("type")) or "articles"
-    if content_type not in {"articles", "answers", "pins", "upvoted_answers", "upvoted_articles"}:
-        raise ValueError("--type 只能是 articles、answers、pins、upvoted_answers 或 upvoted_articles")
+    if content_type not in {"articles", "answers", "pins"}:
+        raise ValueError("--type 只能是 articles、answers 或 pins")
     output_dir_text = first_value(args.output_dir, env.get("ZHIHU_OUTPUT_DIR"), json_config.get("output_dir"))
     output_dir = Path(output_dir_text or f"知乎_{author_name}_文章合集(含本地图片)")
 

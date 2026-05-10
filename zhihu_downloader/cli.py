@@ -23,8 +23,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--user-id", help="知乎用户 user_id；未传时可从 --homepage 或 .env 解析")
     parser.add_argument(
         "--type",
-        choices=["articles", "answers", "pins", "upvoted_answers", "upvoted_articles"],
-        help="下载类型：articles 文章、answers 回答、pins 想法、upvoted_answers 赞同过的回答、upvoted_articles 赞同过的文章",
+        choices=["articles", "answers", "pins"],
+        help="下载类型：articles 文章、answers 回答、pins 想法",
     )
     parser.add_argument("--author-name", help="作者名称，用于输出目录命名")
     parser.add_argument("--env", type=Path, help="环境配置文件路径，默认读取当前目录 .env")
@@ -93,8 +93,11 @@ def main() -> None:
 
     print("=" * 50)
     content_label = CONTENT_TYPE_LABELS.get(config.content_type, config.content_type)
-    print(f"开始爬取【{config.author_name}】的知乎{content_label}")
+    print(f"开始爬取 user_id【{config.user_id}】的知乎{content_label}")
     print(f"user_id: {config.user_id}")
+    print(f"显示名称/输出名: {config.author_name}")
+    if config.author_name != config.user_id:
+        print("提示: 显示名称来自 --author-name 或 .env，不影响实际请求目标；实际请求目标以上面的 user_id 为准。")
     print(f"下载类型: {config.content_type} ({content_label})")
     print(f"输出目录: {config.output_dir}")
     print(f"文章列表分页间隔: {describe_delay_range(config.list_delay_range)}")
@@ -148,9 +151,6 @@ def main() -> None:
                 raw_md = item.markdown
             else:
                 raw_md = parse_article_to_markdown(session, item.url, config.timeout, config.retries, item.item_id)
-            if item.content_type == "upvoted_articles" and "## 文章正文" not in raw_md:
-                article_body = parse_article_to_markdown(session, item.url, config.timeout, config.retries, item.item_id)
-                raw_md += "\n\n## 文章正文\n\n" + article_body
             final_md = raw_md
             if not config.no_images:
                 final_md = download_img_and_replace_md_link(
