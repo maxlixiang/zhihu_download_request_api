@@ -3,7 +3,7 @@
 知乎是中文互联网上内容质量非常高的平台，很多答主的文章非常有收藏价值，本程序旨在能自动保存关注的博主的文章。
 目前本程序仅能支持用户主页下的文章、回答、想法的下载。
 对于对方主页上的动态内容的下载，本程序使用的request+beautifulsoup4不支持，应当基于playwright技术进行，不再本程序的功能范围内。
-
+![知乎标签页](https://github.com/maxlixiang/zhihu_download_request_API/blob/main/images/%E7%9F%A5%E4%B9%8E%E6%A0%87%E7%AD%BE%E6%A0%8F.jpg)
 一个基于知乎 Web API 的本地下载工具，可以把指定用户主页下的文章、回答、想法保存为 Markdown，并可将正文图片下载到本地。
 
 ## 功能
