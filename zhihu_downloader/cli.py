@@ -11,7 +11,7 @@ from .config import (
     build_config,
 )
 from .delay import describe_delay_range, random_sleep
-from .files import MANIFEST_FILE_NAME, load_manifest, mark_article, save_markdown_file
+from .files import MANIFEST_FILE_NAME, dated_file_name, load_manifest, mark_article, save_markdown_file
 from .http import build_session
 from .images import download_img_and_replace_md_link
 from .zhihu import CONTENT_TYPE_LABELS, get_author_items, parse_article_to_markdown
@@ -139,7 +139,8 @@ def main() -> None:
     print(f"\n本次范围: {scope}。共获取到 {total} 条{content_label}，开始解析、下载图片并保存...\n")
 
     for index, item in enumerate(all_items, start=1):
-        md_file_path = config.output_dir / f"{item.title}.md"
+        file_title = dated_file_name(item.title, item.created)
+        md_file_path = config.output_dir / f"{file_title}.md"
         if md_file_path.exists() and not config.force:
             print(f"[{index}/{total}] 已存在，跳过: {md_file_path.name}")
             mark_article(config.output_dir, manifest, item.item_id, item.title, item.url, "skipped", "Markdown 已存在")
@@ -162,7 +163,7 @@ def main() -> None:
                     retries=config.retries,
                     image_delay_range=config.image_delay_range,
                 )
-            saved_path = save_markdown_file(config.output_dir, item.title, final_md)
+            saved_path = save_markdown_file(config.output_dir, file_title, final_md, heading_title=item.title)
             mark_article(config.output_dir, manifest, item.item_id, item.title, item.url, "saved", str(saved_path))
             print(f"保存成功: {saved_path.name}")
         except Exception as exc:

@@ -15,6 +15,13 @@ def clean_file_name(value: str, max_len: int = 80) -> str:
     return (value[:max_len].strip() or "untitled")
 
 
+def dated_file_name(title: str, created: int) -> str:
+    if not created:
+        return title
+    created_date = datetime.fromtimestamp(created).strftime("%Y-%m-%d")
+    return clean_file_name(f"{created_date} {title}", max_len=100)
+
+
 def load_manifest(save_dir: Path) -> Dict[str, object]:
     manifest_path = save_dir / MANIFEST_FILE_NAME
     if not manifest_path.exists():
@@ -59,12 +66,17 @@ def mark_article(
     save_manifest(save_dir, manifest)
 
 
-def save_markdown_file(save_dir: Path, article_title: str, markdown_content: str) -> Path:
-    md_file_path = save_dir / f"{article_title}.md"
+def save_markdown_file(
+    save_dir: Path,
+    file_title: str,
+    markdown_content: str,
+    heading_title: str = "",
+) -> Path:
+    md_file_path = save_dir / f"{file_title}.md"
     tmp_path = md_file_path.with_suffix(".tmp")
     with tmp_path.open("w", encoding="utf-8") as f:
         if not markdown_content.lstrip().startswith("# "):
-            f.write(f"# {article_title}\n\n")
+            f.write(f"# {heading_title or file_title}\n\n")
         f.write(markdown_content)
         f.write("\n")
     tmp_path.replace(md_file_path)
